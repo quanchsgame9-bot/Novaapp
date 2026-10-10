@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LEEVAN // AIMLOCK v4.2 [PROXY CORE]</title>
+<style>
+/* ============ RESET ============ */
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Courier New', monospace; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+    color: #00ffcc;
+}
+
+/* ============ MATRIX BACKGROUND ============ */
+#matrixCanvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    opacity: 0.15;
+}
+
+/* Scanline overlay */
+.scanlines {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 2;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 255, 204, 0.03) 0px,
+        rgba(0, 255, 204, 0.03) 1px,
+        transparent 1px,
+        transparent 3px
+    );
+    animation: scanMove 8s linear infinite;
+}
+
+@keyframes scanMove {
+    from { background-position: 0 0; }
+    to { background-position: 0 100px; }
+}
+
+/* Vignette */
+.vignette {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 3;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.85) 100%);
+}
+
+/* ============ MAIN PANEL ============ */
+.panel {
+    position: relative;
+    z-index: 10;
+    max-width: 480px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 20px 16px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+}
+
+/* ============ HEADER ============ */
+.header {
+    background: rgba(0, 20, 20, 0.6);
+    border: 1.5px solid #00ffcc;
+    border-radius: 8px;
+    padding: 14px 18px;
+    position: relative;
+    box-shadow:
+        0 0 20px rgba(0, 255, 204, 0.3),
+        inset 0 0 20px rgba(0, 255, 204, 0.05);
+    backdrop-filter: blur(6px);
+}
+
+.title {
+    font-size: 16px;
+    font-weight: 900;
+    letter-spacing: 2px;
+    color: #00ffcc;
+    text-shadow: 0 0 8px #00ffcc, 0 0 20px rgba(0, 255, 204, 0.6);
+    margin-bottom: 4px;
+}
+
+.status {
+    font-size: 11px;
+    color: #00ff88;
+    letter-spacing: 1.5px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #00ff88;
+    box-shadow: 0 0 10px #00ff88, 0 0 20px #00ff88;
+    animation: pulseDot 1.5s infinite;
+}
+
+@keyframes pulseDot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.3); }
+}
+
+/* ============ SYSTEM STATS ============ */
+.stats-box {
+    background: rgba(0, 20, 20, 0.6);
+    border: 1.5px solid rgba(0, 255, 204, 0.6);
+    border-radius: 8px;
+    padding: 12px 16px;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 11px;
+    letter-spacing: 1px;
+}
+
+.stat-row:last-child { margin-bottom: 0; }
+
+.stat-label {
+    color: #00ffcc;
+    font-weight: 700;
+}
+
+.stat-value {
+    color: #00ff88;
+    font-weight: 900;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 5px;
+    background: rgba(0, 255, 204, 0.1);
+    border-radius: 3px;
+    margin-top: 3px;
+    overflow: hidden;
+    border: 1px solid rgba(0, 255, 204, 0.3);
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #00ffcc, #00ff88);
+    box-shadow: 0 0 10px #00ffcc;
+    transition: width 0.5s ease;
+}
+
+/* ============ FEATURE BLOCKS ============ */
+.feature-box {
+    background: rgba(0, 20, 20, 0.6);
+    border: 1.5px solid rgba(0, 255, 204, 0.6);
+    border-radius: 8px;
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+}
+
+.feature-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.feature-name {
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 1.5px;
+    color: #00ffcc;
+}
+
+.feature-desc {
+    font-size: 9px;
+    color: rgba(0, 255, 204, 0.5);
+    letter-spacing: 1px;
+}
+
+/* Toggle switch */
+.toggle {
+    position: relative;
+    width: 52px;
+    height: 26px;
+    background: rgba(0, 40, 40, 0.8);
+    border: 1.5px solid rgba(0, 255, 204, 0.5);
+    border-radius: 13px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.toggle::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 2px;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    background: rgba(0, 255, 204, 0.4);
+    border-radius: 50%;
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+}
+
+.toggle.active {
+    background: rgba(0, 255, 136, 0.15);
+    border-color: #00ff88;
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.6);
+}
+
+.toggle.active::after {
+    left: calc(100% - 20px);
+    background: #00ff88;
+    box-shadow: 0 0 12px #00ff88;
+}
+
+.fov-display {
+    font-size: 13px;
+    font-weight: 900;
+    color: #00ff88;
+    padding: 4px 10px;
+    border: 1px solid rgba(0, 255, 136, 0.5);
+    border-radius: 5px;
+    background: rgba(0, 255, 136, 0.05);
+}
+
+/* ============ PROXY BRIDGE CONSOLE ============ */
+.proxy-console {
+    background: rgba(5, 10, 15, 0.8);
+    border: 1.5px solid #00ffcc;
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 10px;
+    height: 100px;
+    overflow-y: auto;
+    color: #00ff88;
+    line-height: 1.4;
+}
+
+/* ============ MAIN BUTTON ============ */
+.activate-btn {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(145deg, rgba(0, 40, 40, 0.9), rgba(0, 20, 20, 0.9));
+    border: 2px solid #00ffcc;
+    border-radius: 10px;
+    color: #00ffcc;
+    font-size: 15px;
+    font-weight: 900;
+    letter-spacing: 2px;
+    cursor: pointer;
+    text-shadow: 0 0 10px #00ffcc;
+    box-shadow: 0 0 20px rgba(0, 255, 204, 0.4);
+    transition: all 0.3s ease;
+}
+
+.activate-btn.active {
+    background: linear-gradient(145deg, rgba(0, 80, 40, 0.9), rgba(0, 40, 20, 0.9));
+    border-color: #00ff88;
+    color: #00ff88;
+    text-shadow: 0 0 15px #00ff88;
+    box-shadow: 0 0 40px rgba(0, 255, 136, 0.7);
+}
+
+.footer {
+    text-align: center;
+    font-size: 9px;
+    color: rgba(0, 255, 204, 0.4);
+    letter-spacing: 2px;
+}
+
+/* ============ TOAST ============ */
+.toast {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.8);
+    background: rgba(0, 20, 20, 0.95);
+    border: 2px solid #00ffcc;
+    border-radius: 10px;
+    padding: 16px 24px;
+    color: #00ffcc;
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 2px;
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+.toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+.toast.success { border-color: #00ff88; color: #00ff88; box-shadow: 0 0 30px rgba(0, 255, 136, 0.8); }
+.toast.error { border-color: #ff3366; color: #ff3366; box-shadow: 0 0 30px rgba(255, 51, 102, 0.8); }
+</style>
+</head>
+<body>
+
+<canvas id="matrixCanvas"></canvas>
+<div class="scanlines"></div>
+<div class="vignette"></div>
+
+<div class="panel">
+    <div class="header">
+        <div class="title">LEEVAN // PROXY BRIDGE v4.2</div>
+        <div class="status">
+            <span class="status-dot"></span>
+            STATUS: <strong id="statusText">STANDBY</strong>
+        </div>
+    </div>
+
+    <div class="stats-box">
+        <div class="stat-row">
+            <span class="stat-label">SOCKET PIPELINE</span>
+            <span class="stat-value" id="socketStatus">DISCONNECTED</span>
+        </div>
+        <div class="stat-row" style="margin-top: 8px;">
+            <span class="stat-label">PACKETS INJECTED</span>
+            <span class="stat-value" id="packetCount">0</span>
+        </div>
+    </div>
+
+    <div class="feature-box">
+        <div class="feature-info">
+            <div class="feature-name">NO RECOIL HOOK</div>
+            <div class="feature-desc">// SERVER VECTOR OVERRIDE</div>
+        </div>
+        <div class="toggle" data-feature="norecoil"></div>
+    </div>
+
+    <div class="feature-box">
+        <div class="feature-info">
+            <div class="feature-name">FOV EXPAND BRIDGE</div>
+            <div class="feature-desc">// MATRIX OFFSET MODULATION</div>
+        </div>
+        <div class="fov-display" id="fovDisplay">60°</div>
+    </div>
+
+    <div class="feature-box">
+        <div class="feature-info">
+            <div class="feature-name">AIMLOCK CORE</div>
+            <div class="feature-desc">// CROSSHAIR SNAP INJECTION</div>
+        </div>
+        <div class="toggle" data-feature="aimlock"></div>
+    </div>
+
+    <div class="feature-box">
+        <div class="feature-info">
+            <div class="feature-name">AIMLOCK VIP VISION STREAM</div>
+            <div class="feature-desc">// MEMORY SYNC BRIDGE</div>
+        </div>
+        <div class="toggle" data-feature="esp"></div>
+    </div>
+
+    <!-- PROXY CONSOLE OUTPUT -->
+    <div class="proxy-console" id="proxyConsole">
+        [PROXY CORE] Initialized local bridge loopback...<br>
+        [WAITING] Awaiting command dispatch...<br>
+    </div>
+
+    <button class="activate-btn" id="activateBtn">⚡ KÍCH HOẠT CẦU NỐI MẠCH</button>
+
+    <div class="footer">
+        © 2026 LEEVAN PROXY SYSTEM · ADVANCED NETWORK INJECTION
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// Matrix background code
+(function() {
+    const canvas = document.getElementById('matrixCanvas');
+    const ctx = canvas.getContext('2d');
+    let width = canvas.width = window.innerWidth;
+    let height = canvas.height = window.innerHeight;
+    const chars = 'アカサタナハマヤラワABCDEF0123456789'.split('');
+    const fontSize = 14;
+    let columns = Math.floor(width / fontSize);
+    let drops = [];
+    for (let i = 0; i < columns; i++) drops[i] = Math.random() * height;
+
+    function draw() {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+        ctx.fillRect(0, 0, width, height);
+        ctx.fillStyle = '#00ffcc';
+        ctx.font = fontSize + 'px monospace';
+        for (let i = 0; i < drops.length; i++) {
+            const char = chars[Math.floor(Math.random() * chars.length)];
+            ctx.fillText(char, i * fontSize, drops[i]);
+            if (drops[i] > height && Math.random() > 0.975) drops[i] = 0;
+            drops[i] += fontSize;
+        }
+    }
+    setInterval(draw, 50);
+    window.addEventListener('resize', () => {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+        columns = Math.floor(width / fontSize);
+        drops = Array.from({length: columns}, () => Math.random() * height);
+    });
+})();
+
+function showToast(msg, type = 'info') {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.className = 'toast show ' + type;
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+function logProxy(msg) {
+    const consoleDiv = document.getElementById('proxyConsole');
+    const time = new Date().toTimeString().split(' ')[0];
+    consoleDiv.innerHTML += `[${time}] ${msg}<br>`;
+    consoleDiv.scrollTop = consoleDiv.scrollHeight;
+}
+
+let systemActive = false;
+let packetCount = 0;
+let proxyInterval = null;
+
+// Proxy Engine Simulation Loop
+function startProxyEngine() {
+    proxyInterval = setInterval(() => {
+        if (!systemActive) return;
+        packetCount += Math.floor(1 + Math.random() * 4);
+        document.getElementById('packetCount').textContent = packetCount;
+        
+        const actions = [
+            "Intercepted client aim delta vector -> Injected correction offset.",
+            "Socket payload modified: Recoil dampening byte set to 0x00.",
+            "FOV boundary extended via packet structure manipulation.",
+            "Crosshair lock target locked and forwarded to server buffer."
+        ];
+        logProxy(actions[Math.floor(Math.random() * actions.length)]);
+    }, 600);
+}
+
+document.querySelectorAll('.toggle').forEach(toggle => {
+    toggle.addEventListener('click', function() {
+        this.classList.toggle('active');
+        const feature = this.dataset.feature.toUpperCase();
+        const isOn = this.classList.contains('active');
+        
+        if (isOn) {
+            showToast(`✅ ${feature} HOOK ACTIVE`, 'success');
+            logProxy(`Pipeline hook [${feature}] successfully loaded into proxy layer.`);
+        } else {
+            showToast(`⛔ ${feature} HOOK DISABLED`, 'error');
+            logProxy(`Pipeline hook [${feature}] detached from stream.`);
+        }
+    });
+});
+
+const activateBtn = document.getElementById('activateBtn');
+activateBtn.addEventListener('click', function() {
+    systemActive = !systemActive;
+
+    if (systemActive) {
+        this.classList.add('active');
+        this.textContent = '🔴 HỆ THỐNG ĐANG CAN THIỆP // TẮT';
+        document.getElementById('statusText').textContent = 'ACTIVE [BRIDGE RUNNING]';
+        document.getElementById('socketStatus').textContent = 'CONNECTED (LOOPBACK)';
+        document.getElementById('socketStatus').style.color = '#00ff88';
+
+        document.querySelectorAll('.toggle').forEach(t => t.classList.add('active'));
+        showToast('⚡ CẦU NỐI MẠCH ĐÃ KÍCH HOẠT CỰC MẠNH', 'success');
+        logProxy('All proxy data interception hooks engaged. Streaming packets active.');
+        startProxyEngine();
+    } else {
+        this.classList.remove('active');
+        this.textContent = '⚡ KÍCH HOẠT CẦU NỐI MẠCH';
+        document.getElementById('statusText').textContent = 'STANDBY';
+        document.getElementById('socketStatus').textContent = 'DISCONNECTED';
+        document.getElementById('socketStatus').style.color = '#ff3366';
+
+        document.querySelectorAll('.toggle').forEach(t => t.classList.remove('active'));
+        showToast('⛔ ĐÃ NGẮT CẦU NỐI', 'error');
+        logProxy('Proxy bridge terminated. Normal routing restored.');
+        clearInterval(proxyInterval);
+    }
+});
+</script>
+</body>
+</html>
